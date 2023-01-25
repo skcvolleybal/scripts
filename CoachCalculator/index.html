@@ -1,0 +1,42 @@
+<head>
+  <title>CoachCalculator</title>
+  <link
+    rel="stylesheet"
+    type="text/css"
+    href="libs/Semantic/semantic.min.css"
+  />
+  <script
+    src="https://code.jquery.com/jquery-3.1.1.min.js"
+    integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+    crossorigin="anonymous"
+  ></script>
+  <script src="libs/Semantic/semantic.min.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+    crossorigin="anonymous"
+  />
+</head>
+<body>
+  <div style="margin: 5px;">
+    <button class="btn btn-primary">Coachteam</button>
+
+    <div id="coachteam" class="ui search multiple selection dropdown">
+      <i class="dropdown icon"></i>
+      <div class="default text">Bv. SKC HS 2</div>
+    </div>
+  </div>
+  <div style="margin: 5px;">
+    <button class="btn btn-light">Andere Teams</button>
+    <div id="eigenTeams" class="ui search multiple selection dropdown">
+      <i class="dropdown icon"></i>
+      <div class="default text">Bv. VVV Delta DS 1</div>
+    </div>
+  </div>
+  <div id="samenvatting" style="margin: 5px;"></div>
+  <div id="coachoverzicht" style="max-width: 500px;"></div>
+
+  <script src="coach-calculator.js"></script>
+  <style></style>
+</body>
