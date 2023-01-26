@@ -28,7 +28,7 @@ $conn = authDB(
     $env->Staging_DB_Conscribo->db
 );
 
-// 2 Authenticate Conscribo and set Conscribo Session ID
+// 2 Authenticate at Conscribo API and set Conscribo Session ID
 $cSessionID = authConscribo(
     $env->Conscribo_API->username, 
     $env->Conscribo_API->password, 
