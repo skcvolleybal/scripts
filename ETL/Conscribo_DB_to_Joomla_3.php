@@ -3,7 +3,7 @@
 /**
  * Dit script synchroniseert de Conscribo MySQL table naar de j3_users en j3_comprofiler tables van Joomla 3. 
  * 
- * Conscribo is the single source of truth. Dus: 
+ * Conscribo is de single source of truth. Dus: 
  * 1. Als een user (lid) bestaat in Conscribo maar niet in j3_users, voeg toe aan j3_users en daarna j3_comprofiler.
  * 2. Als een user bestaat in Conscribo én in j3_users, update dan alle velden in j3_users (BEHALVE het veld 'password', zodat user nog kan inloggen in de Joomla site). 
  * 3. Als een user niet bestaat in Conscribo maar wel in j3_users, verwijder dan de user uit j3_comprofiler en daarna j3_users. 
@@ -17,23 +17,22 @@
 
 // 0 Get and set environment variables
 $env = json_decode(file_get_contents("../../../env.json"));
-$envC = $env->Staging_DB_Conscribo; // Conscribo DB
-$envJ3 = $env->Joomla3; // Joomla3 DB
+
 
 // Connect to the Conscribo MySQL Table
 $conn_Conscribo = authDB(
-    $envC->$host,
-    $envC->$username,
-    $envC->$password,
-    $envC->$dbname
+ $env->Staging_DB_Conscribo->host,
+ $env->Staging_DB_Conscribo->username,
+ $env->Staging_DB_Conscribo->password,
+ $env->Staging_DB_Conscribo->db
 );
 
 // Connect to the Joomla 3 MySQL Table, vcontaining j3_users and j3_comprofiler
 $conn_J3 = authDB(
-    $envJ3->$host,
-    $envJ3->$username,
-    $envJ3->$password,
-    $envJ3->$dbname
+    $env->Joomla3->host,
+    $env->Joomla3->username,
+    $env->Joomla3->password,
+    $env->Joomla3->db
 );
 
 
@@ -52,5 +51,6 @@ function authDB(string $host, string $user, string $password, string $dbname)
 
 
 // Close connection
-mysqli_close($conn);
+mysqli_close($conn_Conscribo);
+mysqli_close($conn_J3);
  
