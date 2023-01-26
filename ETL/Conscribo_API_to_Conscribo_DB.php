@@ -20,22 +20,20 @@ $start_time = microtime(true);
 // We go all the way outside the root directory
 $env = json_decode(file_get_contents("../../../env.json"));
 
-$host = $env->Staging_DB_Conscribo->host;
-$user = $env->Staging_DB_Conscribo->username;
-$password = $env->Staging_DB_Conscribo->password;
-$dbname = $env->Staging_DB_Conscribo->db;
-
-// Conscribo auth
-$cAccountName = $env->Conscribo_API->accountname;
-$cUsername = $env->Conscribo_API->username;
-$cPassword = $env->Conscribo_API->password;
-$cSessionID = null;
-
 // 1 Authenticate at SKC's MySQL Database
-$conn = authDB($host, $user, $password, $dbname);
+$conn = authDB(
+    $env->Staging_DB_Conscribo->host, 
+    $env->Staging_DB_Conscribo->username, 
+    $env->Staging_DB_Conscribo->password, 
+    $env->Staging_DB_Conscribo->db
+);
 
 // 2 Authenticate Conscribo and set Conscribo Session ID
-$cSessionID = authConscribo($cUsername, $cPassword, $cAccountName);
+$cSessionID = authConscribo(
+    $env->Conscribo_API->username, 
+    $env->Conscribo_API->password, 
+    $env->Conscribo_API->accountname
+);
 
 // 3 Get Conscribo Personen
 $cPersonen = extractCPersonen($cSessionID);
