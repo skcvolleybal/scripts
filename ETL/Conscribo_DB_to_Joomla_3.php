@@ -21,10 +21,10 @@ $env = json_decode(file_get_contents("../../../env.json"));
 
 // Connect to the Conscribo MySQL Table
 $conn_Conscribo = authDB(
- $env->Staging_DB_Conscribo->host,
- $env->Staging_DB_Conscribo->username,
- $env->Staging_DB_Conscribo->password,
- $env->Staging_DB_Conscribo->db
+ $env->Conscribo_DB->host,
+ $env->Conscribo_DB->username,
+ $env->Conscribo_DB->password,
+ $env->Conscribo_DB->db
 );
 
 // Connect to the Joomla 3 MySQL Table, vcontaining j3_users and j3_comprofiler

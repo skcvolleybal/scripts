@@ -21,10 +21,10 @@ $env = json_decode(file_get_contents("../../../env.json"));
 
  
 // To-do: remove from this script
-$host = $env->Staging_DB_Conscribo->host;
-$user = $env->Staging_DB_Conscribo->username;
-$password = $env->Staging_DB_Conscribo->password;
-$dbname = $env->Staging_DB_Conscribo->db;
+$host = $env->Conscribo_DB->host;
+$user = $env->Conscribo_DB->username;
+$password = $env->Conscribo_DB->password;
+$dbname = $env->Conscribo_DB->db;
 
 
 // 1 Authenticate at SKC MySQL Database

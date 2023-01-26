@@ -22,10 +22,10 @@ $env = json_decode(file_get_contents("../../../env.json"));
 
 // 1 Authenticate at SKC's MySQL Database
 $conn = authDB(
-    $env->Staging_DB_Conscribo->host, 
-    $env->Staging_DB_Conscribo->username, 
-    $env->Staging_DB_Conscribo->password, 
-    $env->Staging_DB_Conscribo->db
+    $env->Conscribo_DB->host, 
+    $env->Conscribo_DB->username, 
+    $env->Conscribo_DB->password, 
+    $env->Conscribo_DB->db
 );
 
 // 2 Authenticate at Conscribo API and set Conscribo Session ID
