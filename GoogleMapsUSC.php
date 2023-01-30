@@ -5,8 +5,7 @@
 </style>
 <?php 
 $env = json_decode(file_get_contents("../../env.json"));
-$envG = $env->GoogleMapsApiKey;
-print_r($envG);
+$envG = $env->GoogleMapsApiKey->key;
 ?>
 
 
