@@ -12,6 +12,3 @@ This repo contains helper scripts for Joomla such as FotoMenu, CoachCalculator a
 
 ## Location
 Webhost location of this directory: /public_html/scripts. Github Actions deploys to there. 
-
-### This repo is PRIVATE because some scripts still contain API keys. 
-
