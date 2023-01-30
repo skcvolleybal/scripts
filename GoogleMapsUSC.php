@@ -5,6 +5,7 @@
 </style>
 <?php 
 $env = json_decode(file_get_contents("../../env.json"));
+?>
 
 
 <div id="map-canvas"></div>
