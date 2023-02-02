@@ -1,5 +1,5 @@
 on: 
-  [push, workflow_dispatch]:
+  push: 
     branches: 
       - dev
 name: 🚀 Deploy scripts to test on Antagonist when a commit is pushed to main branch
