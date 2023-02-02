@@ -20,6 +20,7 @@ $start_time = microtime(true);
 // We go all the way outside the root directory
 $env = json_decode(file_get_contents("../../../env.json"));
 
+# Test push
 // 1 Authenticate at SKC's MySQL Database
 $conn = authDB(
     $env->Conscribo_DB->host, 
