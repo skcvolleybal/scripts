@@ -1,8 +1,5 @@
 on: 
   workflow_dispatch:
-  push: 
-    branches: 
-      - main
 name: 🚀 Deploy scripts to production on Antagonist when a commit is pushed to main branch
 jobs:
   web-deploy:
