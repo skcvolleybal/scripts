@@ -2,11 +2,11 @@ on:
   workflow_dispatch:
   push: 
     branches: 
-      - dev
-name: 🚀 Deploy scripts to test on Antagonist when a commit is pushed to main branch
+      - "*"
+name: 🧪 Deploy scripts folder to test
 jobs:
   web-deploy:
-    name: 🎉 Deploy
+    name: 🧪 Deploy to test
     runs-on: ubuntu-latest
     steps:
     - name: 🚚 Get latest code
