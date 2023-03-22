@@ -12,15 +12,12 @@
  * @copyright  2022 kmsch
  */
 
+include ('Base_ETL.php');
 
 // How long does this run? Start time:
 $start_time = microtime(true);
 
-// 0 Get and set environment variables
-// We go all the way outside the root directory
-$env = json_decode(file_get_contents("../../../env.json"));
 
-# Test push
 // 1 Authenticate at SKC's MySQL Database
 $conn = authDB(
     $env->Conscribo_DB->host, 
@@ -37,13 +34,13 @@ $cSessionID = authConscribo(
 );
 
 // 3 Get Conscribo Personen
-$cPersonen = extractCPersonen($cSessionID);
+$cPersonen = extractCPersonen($cSessionID, $env);
 
 // 4 Get Conscribo Teams
-$cTeams = extractCTeams($cSessionID);
+$cTeams = extractCTeams($cSessionID, $env);
 
 // 5 Get Conscribo Commissies
-$cCommissies = extractCCommissies($cSessionID);
+$cCommissies = extractCCommissies($cSessionID, $env);
 
 // Drop Personen, Teams and Commissies Tables. Recreate tables. 
 dropTables($conn);
@@ -106,13 +103,13 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         return $response->result->sessionId;
     }
 
-    function extractCPersonen(string $cSessionID)
+    function extractCPersonen(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",
@@ -164,6 +161,8 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         $response = str_replace('\'', '', $response);
         $response = json_decode($response);
 
+        print_r($response);
+
         if ($response->result->success != 1)
         {
             die("Conscribo getPersonen failed: " . $response);
@@ -175,13 +174,13 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
     }
 
 
-    function extractCTeams(string $cSessionID)
+    function extractCTeams(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",
@@ -225,13 +224,13 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
 
     }
 
-    function extractCCommissies(string $cSessionID)
+    function extractCCommissies(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",

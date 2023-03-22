@@ -14,8 +14,7 @@
 
 // 0 Get environment variables
 
-echo _DIR_;
-die();
+include ('Base_ETL.php');
 
 $env = json_decode(file_get_contents("../../../env.json"));
 

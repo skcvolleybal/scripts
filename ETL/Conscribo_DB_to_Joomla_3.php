@@ -15,8 +15,7 @@
  */
 
 
-// 0 Get and set environment variables
-$env = json_decode(file_get_contents("../../../env.json"));
+include ('Base_ETL.php');
 
 
 // Connect to the Conscribo MySQL Table
