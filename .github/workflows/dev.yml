@@ -11,8 +11,10 @@ jobs:
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v2
-    - name: Installing PHP dependencies
-      run: composer update    
+    - name: 🏗️ Installing PHP dependencies
+      run: |
+        composer update
+        composer dumpautoload
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.3
       with:
