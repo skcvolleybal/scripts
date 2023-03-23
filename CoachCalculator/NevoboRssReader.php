@@ -39,7 +39,6 @@ class NevoboGateway
     {
         $this->verenigingscode = $verenigingscode;
         $this->regio = $regio;
-        throw new InvalidArgumentException('test');
     }
 
     public function GetStandForPoule($poule)
