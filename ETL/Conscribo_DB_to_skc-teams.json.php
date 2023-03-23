@@ -14,6 +14,7 @@
 
 // 0 Get environment variables
 
+//  Include Base ETL for Sentry logging, autoloader and Env variables
 include ('Base_ETL.php');
 
 $env = json_decode(file_get_contents("../../../env.json"));
