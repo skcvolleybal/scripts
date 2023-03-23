@@ -33,11 +33,13 @@ class NevoboGateway
         'november' => 'November',
         'december' => 'December',
     ];
+    
 
     public function __construct($verenigingscode = 'CKL9R53', $regio = 'regio-west')
     {
         $this->verenigingscode = $verenigingscode;
         $this->regio = $regio;
+        throw new InvalidArgumentException('test');
     }
 
     public function GetStandForPoule($poule)
