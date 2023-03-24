@@ -94,12 +94,12 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         // Check if we're authenticated
         if (!isset($response->result))
         {
-            throw new Exception("Conscribo connection failed, got no valid response: " . print_r($response));
+            throw new Exception("Conscribo connection failed, got no valid response: " . print_r($response, true));
 
         }
         if ($response->result->success != 1)
         {
-            throw new Exception("Conscribo authentication failed: " . print_r($response));
+            throw new Exception("Conscribo authentication failed: " . print_r($response, true));
         }
         echo "Conscribo account: $cAccountName connection successful <br>";
         return $response->result->sessionId;
