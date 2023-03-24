@@ -1,8 +1,16 @@
 <?php
-require_once 'libs/simplepie-1.5.2/autoloader.php';
+require_once 'libs/SimplePie1.3/autoloader.php';
 
-error_reporting(E_ALL);
-ini_set("display_errors", 1);
+require 'vendor/autoload.php';
+
+$env = json_decode(file_get_contents("../../env.json"));
+
+\Sentry\init(['dsn' => 'https://45df5d88f1084fcd96c8ae9fa7db50c7@o4504883122143232.ingest.sentry.io/4504883124240384',
+'environment' => $env->Environment ]);
+
+
+// error_reporting(E_ALL);
+// ini_set("display_errors", 1);
 
 class NevoboApi
 {

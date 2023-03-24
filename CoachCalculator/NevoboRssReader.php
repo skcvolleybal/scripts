@@ -33,6 +33,7 @@ class NevoboGateway
         'november' => 'November',
         'december' => 'December',
     ];
+    
 
     public function __construct($verenigingscode = 'CKL9R53', $regio = 'regio-west')
     {

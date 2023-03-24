@@ -14,9 +14,8 @@
  * @copyright  2022 kmsch
  */
 
-
-// 0 Get and set environment variables
-$env = json_decode(file_get_contents("../../../env.json"));
+//  Include Base ETL for Sentry logging, autoloader and Env variables
+include ('Base_ETL.php');
 
 
 // Connect to the Conscribo MySQL Table

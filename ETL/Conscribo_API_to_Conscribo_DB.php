@@ -12,15 +12,13 @@
  * @copyright  2022 kmsch
  */
 
+//  Include Base ETL for Sentry logging, autoloader and Env variables
+include ('Base_ETL.php');
 
 // How long does this run? Start time:
 $start_time = microtime(true);
 
-// 0 Get and set environment variables
-// We go all the way outside the root directory
-$env = json_decode(file_get_contents("../../../env.json"));
 
-# Test push
 // 1 Authenticate at SKC's MySQL Database
 $conn = authDB(
     $env->Conscribo_DB->host, 
@@ -37,13 +35,13 @@ $cSessionID = authConscribo(
 );
 
 // 3 Get Conscribo Personen
-$cPersonen = extractCPersonen($cSessionID);
+$cPersonen = extractCPersonen($cSessionID, $env);
 
 // 4 Get Conscribo Teams
-$cTeams = extractCTeams($cSessionID);
+$cTeams = extractCTeams($cSessionID, $env);
 
 // 5 Get Conscribo Commissies
-$cCommissies = extractCCommissies($cSessionID);
+$cCommissies = extractCCommissies($cSessionID, $env);
 
 // Drop Personen, Teams and Commissies Tables. Recreate tables. 
 dropTables($conn);
@@ -67,7 +65,7 @@ function authDB(string $host, string $user, string $password, string $dbname)
     $conn = mysqli_connect($host, $user, $password, $dbname);
     if (!$conn)
     {
-        die("SKC MySQL database connection failed: " . mysqli_connect_error());
+        throw new Exception("SKC MySQL database connection failed: " . mysqli_connect_error());
     }
     $conn->set_charset('utf8'); // Keep this, otherwise accents like é won't work. 
     echo "Succesfully connected to DB: $dbname <br>";
@@ -93,26 +91,29 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         curl_close($curl);
         $response = json_decode($response);
 
-        // Check if we're authenticated
-        if (!isset($response->result))
+
+        // Check if connection is working
+        if (!isset($response->result) || $response->result->success != 1)
         {
-            die("Connection failed, got no valid Conscribo response. Is Conscribo down for maintenance? <br>");
+            if (isset($response->result->notifications->notification)) {
+                // Throw a proper error message
+                throw new Exception("Can not connect to Conscribo: " . implode(' ', $response->result->notifications->notification));
+            }
+            // If we can't have a proper error message, dump the whole response 
+            throw new Exception("Can not connect to Conscribo: " . print_r($response, true));
         }
-        if ($response->result->success != 1)
-        {
-            die("Conscribo authentication failed: " . print_r($response));
-        }
+
         echo "Conscribo account: $cAccountName connection successful <br>";
         return $response->result->sessionId;
     }
 
-    function extractCPersonen(string $cSessionID)
+    function extractCPersonen(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",
@@ -164,9 +165,10 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         $response = str_replace('\'', '', $response);
         $response = json_decode($response);
 
+
         if ($response->result->success != 1)
         {
-            die("Conscribo getPersonen failed: " . $response);
+            throw new Exception("Failed to extract personen from Conscribo: " . $response);
         }
         
 
@@ -175,13 +177,13 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
     }
 
 
-    function extractCTeams(string $cSessionID)
+    function extractCTeams(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",
@@ -218,20 +220,20 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
 
         if ($response->result->success != 1)
         {
-            die("Conscribo getTeams failed: " . $response);
+            throw new Exception("Failed to extract teams from Conscribo: " . $response);
         }
 
         return $response;
 
     }
 
-    function extractCCommissies(string $cSessionID)
+    function extractCCommissies(string $cSessionID, $env)
     {
 
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://secure.conscribo.nl/testvereniging345/request.json',
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => '{"request": {
                 "command": "listRelations",
@@ -261,7 +263,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
 
         if ($response->result->success != 1)
         {
-            die("Conscribo get commissies failed: " . $response);
+            throw new Exception("Failed to extract commissies from Conscribo: " . $response);
         }
 
         return $response;
@@ -278,7 +280,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         }
         else
         {
-            echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+            throw new Exception ("Error: " . $sql . "<br>" . mysqli_error($conn));
         }
 
     }
@@ -319,7 +321,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         }
         else
         {
-            echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+            throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
         }
 
         $sql = "CREATE TABLE Team (
@@ -343,7 +345,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         }
         else
         {
-            echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+            throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
         }
 
         $sql = "CREATE TABLE Commissie (
@@ -360,7 +362,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         }
         else
         {
-            echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+            throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
         }
 
 
@@ -433,7 +435,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
             }
             else
             {
-                echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+                throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
             }
         }
 
@@ -475,7 +477,7 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
             }
             else
             {
-                echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+                throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
             }
         }
 
@@ -487,19 +489,19 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
 
         {
             $sql = "INSERT INTO Commissie (code, naam, weergavenaam, commissieleden) 
-            
-            VALUES (
-             '" . $commissie->code . "',
-             '" . $commissie->naam . "',
-             '" . $commissie->weergavenaam . "',
-             '" . $commissie->commissieleden . "')";
+                    VALUES (
+                    '" . $commissie->code . "',
+                    '" . $commissie->naam . "',
+                    '" . $commissie->weergavenaam . "',
+                    '" . $commissie->commissieleden . "')";
+
             if (mysqli_query($conn, $sql))
             {
                 echo "New record $commissie->naam created in Commissie table successfully <br>";
             }
             else
             {
-                echo "Error: " . $sql . "<br>" . mysqli_error($conn);
+                throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
             }
         }
 
