@@ -91,9 +91,16 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         curl_close($curl);
         $response = json_decode($response);
 
-        // Check if we're authenticated
+        // Check if connection is working 
         if (!isset($response->result) || $response->result->success != 1)
         {
+            if (isset($response->result->notifications)) {
+                $errorNotification = '';
+                    foreach ($response->result->notifications as $notification) {
+                        $errorNotification .= $notification;
+                    }
+                throw new Exception("Can not connect to Conscribo: " . $errorNotification);
+            }
             throw new Exception("Can not connect to Conscribo: " . print_r($response, true));
         }
 
