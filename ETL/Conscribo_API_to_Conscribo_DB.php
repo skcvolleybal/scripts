@@ -18,8 +18,14 @@ include ('Base_ETL.php');
 // How long does this run? Start time:
 $start_time = microtime(true);
 
+
 // 1 Authenticate at SKC's MySQL Database
-$conn = authDB($env);
+$conn = authDB(
+    $env->Conscribo_DB->host, 
+    $env->Conscribo_DB->username, 
+    $env->Conscribo_DB->password, 
+    $env->Conscribo_DB->db
+);
 
 // 2 Authenticate at Conscribo API and set Conscribo Session ID
 $cSessionID = authConscribo(
@@ -53,16 +59,10 @@ loadcCommissiesToSQL($cCommissies, $conn);
 
 // ///// Done.
 
-function authDB($env)
-{
-    $credentials = $env->Conscribo_DB;
 
-    $conn = mysqli_connect(
-        $credentials->host,
-        $credentials->user,
-        $credentials->password,
-        $credentials->dbname
-    );
+function authDB(string $host, string $user, string $password, string $dbname)
+{
+    $conn = mysqli_connect($host, $user, $password, $dbname);
     if (!$conn)
     {
         throw new Exception("SKC MySQL database connection failed: " . mysqli_connect_error());
