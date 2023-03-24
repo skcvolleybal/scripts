@@ -91,16 +91,15 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         curl_close($curl);
         $response = json_decode($response);
 
-        // Check if connection is working 
+
+        // Check if connection is working
         if (!isset($response->result) || $response->result->success != 1)
         {
-            if (isset($response->result->notifications)) {
-                $errorNotification = '';
-                    foreach ($response->result->notifications as $notification) {
-                        $errorNotification .= $notification;
-                    }
-                throw new Exception("Can not connect to Conscribo: " . $errorNotification);
+            if (isset($response->result->notifications->notification)) {
+                // Throw a proper error message
+                throw new Exception("Can not connect to Conscribo: " . implode(' ', $response->result->notifications->notification));
             }
+            // If we can't have a proper error message, dump the whole response 
             throw new Exception("Can not connect to Conscribo: " . print_r($response, true));
         }
 
