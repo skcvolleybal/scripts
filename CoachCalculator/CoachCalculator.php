@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL ^ E_DEPRECATED);
+
+
 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
     setlocale(LC_ALL, 'nld_nld');
 } else {
