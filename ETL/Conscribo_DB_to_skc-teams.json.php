@@ -17,7 +17,6 @@
 //  Include Base ETL for Sentry logging, autoloader and Env variables
 include ('Base_ETL.php');
 
-$env = json_decode(file_get_contents("../../../env.json"));
 
  
 // To-do: remove from this script
