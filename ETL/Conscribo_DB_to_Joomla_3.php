@@ -60,6 +60,7 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
     foreach ($conscriboPersonen as $key => $persoon) {
         foreach ($duplicates as $duplicate) {
             if ($persoon['email'] == $duplicate) {
+                throw new Exception("Cannot continue import! User " . $duplicate . " user has multiple identical e-mail addresses in Conscribo, which Joomla can't work with. Correct the mistake in Conscribo by making sure each user has just one e-mail address. ");
                 unset($conscriboPersonen[$key]);
             }
         }
