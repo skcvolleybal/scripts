@@ -42,8 +42,8 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
     $conscriboPersonen = getConscriboPersonen($conn_Conscribo);
     $joomla3Users = getJoomla3Users ($conn_J3);
 
-    // We remove Conscribo personen that don't have an e-mail address. Personen without an e-mail address shouldn't exist in the first place. 
-    // However, they may exist accidentally as part of Conscribo's dummy data, so we remove them just to be sure. 
+    // We do not sync personen without an e-mail address, because Joomla requires accounts to have an e-mail address. 
+    // These persons may exist as part of Conscribo's dummy or for other reasons. They just don't get a Joomla account. 
     foreach ($conscriboPersonen as $key => $persoon) {
         if ($persoon['email'] == null || $persoon['email'] == '') {
             print_r('Removed key: ' . $key . ', ');
@@ -51,7 +51,32 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
         }
     }
 
-    // We remove all duplicate e-mail addresses because duplicate addresses shouldn't ever be inserted in the Joomla DB. 
+    // We do not sync personen without a username, because Joomla requires accounts to a username. 
+    // These persons may exist as part of Conscribo's dummy or for other reasons. They just don't get a Joomla account. 
+    foreach ($conscriboPersonen as $key => $persoon) {
+        if ($persoon['username'] == null || $persoon['username'] == '') {
+            print_r('Removed key: ' . $key . ', ');
+            unset($conscriboPersonen[$key]);
+        }
+    }
+
+    // We do not sync personen with an invalid e-mail address. 
+    foreach ($conscriboPersonen as $key => $persoon) {
+        if (!filter_var($persoon['email'], FILTER_VALIDATE_EMAIL)) {
+            unset($conscriboPersonen[$key]);
+          }
+    }
+
+    // We do not sync users who do have synchroniseren turned off, in case we need accounts in Conscribo, without them being shouldn't be in the Joomla site. 
+    foreach ($conscriboPersonen as $key => $persoon) {
+        if (! $persoon['synchroniseren'] == 1) {
+            print_r('Not processing persoon due to synchronising checkbox: ' . $key . ', ');
+            unset($conscriboPersonen[$key]);
+        }
+    }
+    
+
+    // We throw an exception (and Sentry notification) in case Conscribo personen have double e-mail addresses. Conscribo may accept it, but Joomla doesn't. 
     $emailAddresses = [];
     foreach ($conscriboPersonen as $persoon) {
         $emailAddresses[] = $persoon['email']; 
@@ -66,31 +91,20 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
         }
     }
 
-    // We do not sync users with synchroniseren turned off, in case we need accounts in Conscribo that shouldn't be in the Joomla site. 
-    foreach ($conscriboPersonen as $key => $persoon) {
-        if (! $persoon['synchroniseren'] == 1) {
-            print_r('Removed key due to synchronising checkbox: ' . $key . ', ');
-            unset($conscriboPersonen[$key]);
-        }
-    }
-    
-    
 
+    // We do all this in PHP instead of SQL, because we can't compare or join the Conscribo table with the j3_users table based on index keys. 
+    // Conscribo has its own index field (relatienummer), which is different from Joomla's id-field. 
+    // We could compare the two in SQL by setting the Joomla email field as unique key, however, Joomla won't let you.  
+    // So we do it all here manually.  
     
-    // Why do we do all this in PHP instead of SQL? 
-    // Because we can't compare or join Conscribo with j3_users based on index keys. 
-    // Conscribo has its own index key (relatienummer), which is different from Joomla's id-field. 
-    // We could compare the two in SQL by setting the Joomla email field as unique key, however, Joomla won't (easily) let you.  
-    // So we do the comparison here manually.  
-    
-    // Using nested foreaches because, somehow, array_key_exists() won't work. 
+    // We use nested foreaches because, somehow, array_key_exists() won't work. 
     foreach ($conscriboPersonen as $key => $persoon) {
         $found = FALSE;
         foreach ($joomla3Users as $user) {
             if ($persoon['email'] == $user['email']) {
                 print_r($persoon['email'] . ' exists in both Conscribo and Joomla 3 users, so we update its Joomla data <br>');
                 $found = TRUE;
-                // 1. A Conscribo persoon exists in Joomla DB, so we update it's data 
+                // 1. A Conscribo persoon already exists in Joomla DB, so we update it's data. 
                 // Update the user. 
                 updateJoomlaUser($persoon, $conn_J3);
 
@@ -130,7 +144,7 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
     function addJoomlaUser ($user, $conn_J3) {
         
         $sql = "INSERT INTO j3_users (name, username, email)
-                VALUES ('" . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "')";
+                VALUES ('" . $user['voornaam'] .  " " . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "')";
 
         if (mysqli_query($conn_J3, $sql))
         {
@@ -145,8 +159,10 @@ function syncUsers ($conn_Conscribo, $conn_J3) {
 
     function updateJoomlaUser($user, $conn_J3) {
 
+        // $name = $
+
         $sql = "UPDATE j3_users
-        SET name = '" . $user['naam'] . "', username=  '" . $user['username'] . "', email = '" . $user['email'] . "'
+        SET name = '" . $user['voornaam'] .  " " . $user['naam'] . "', username=  '" . $user['username'] . "', email = '" . $user['email'] . "'
         WHERE email = '" . $user['email'] . "' ";
 
 
