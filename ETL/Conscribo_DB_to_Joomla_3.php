@@ -50,6 +50,8 @@ function syncUsers($conn_Conscribo, $conn_J3)
     // Sanitize the users first: check for missing fields, duplicates, etc.
     $conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
 
+    $conscriboPersonen = addJoomlaTeamsToConscriboPersonen($conscriboPersonen, $conn_J3);
+
     // 
     $statistics = array();
 
@@ -94,7 +96,7 @@ function addJoomlaUser($user, $conn_J3)
                 VALUES ('" . $user['voornaam'] .  " " . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "' , NOW(), NOW(), NOW())";
 
     if (mysqli_query($conn_J3, $sql)) {
-        print_r("Synced Conscribo persoon ." .  $user['email'] . " successfully (added)<br>");
+        print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (added)<br>");
     } else {
         throw new Exception("Could not add user to Joomla database: " . $sql . "<br>" . mysqli_error($conn_J3));
     }
@@ -179,6 +181,36 @@ function sanitizeConscriboPersonen(array $conscriboPersonen): array
     return $conscriboPersonen;
 }
 
+function addJoomlaTeamsToConscriboPersonen ($conscriboPersonen, $conn_J3) : array {
+    $joomlaTeams = getJoomlaTeams($conn_J3);
+    foreach ($conscriboPersonen as $key => $persoon) {
+        foreach ($joomlaTeams as $team) {
+            if ($persoon['team_2'] == $team['teamnaam']) {
+                $conscriboPersonen[$key] = array_merge($persoon, $team);
+            }
+        }
+    }
+    // print_r($conscriboPersonen);
+    return $conscriboPersonen;
+}
+
+function getJoomlaTeams ($conn_J3) : array {
+     // Get all teams from the j3_usergroups table
+
+     $sql = "SELECT  G.id, title AS teamnaam
+            FROM J3_usergroups G
+            WHERE G.parent_id in (SELECT id from J3_usergroups where title = 'Teams')
+            order by teamnaam asc";
+     $result = $conn_J3->query($sql);
+ 
+     /* associative array */
+     $teams = array();
+     while ($team = $result->fetch_array(MYSQLI_ASSOC)) {
+         // Add each team to the teams array
+         $teams[] = $team;
+     }
+     return $teams;
+}
 
 function getConscriboPersonen($conn_Conscribo)
 {
