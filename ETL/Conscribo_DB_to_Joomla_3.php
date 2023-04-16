@@ -210,20 +210,22 @@ function sanitizeConscriboPersonen(array $conscriboPersonen): array
 
 function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 {
+
+    // First, we get all the Joomla groups (ID and title, for example ID 49, title Webcie, etc)
+    // Then, if the Conscribo persoon is member of the Webcie commissie, we add the Joomla ID (49) to the Conscribo persoon
+    // So that later, we have a Conscribo persoon with all the required Joomla group IDs to insert into the DB
+
     $joomlaGroups = getJoomlaGroups();
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         
-        $commissies = [];
-        $coach_van = [];
-        $trainer_van = [];
-        $teams = [];
-        
-        $conscriboPersoon['commissies'] = explode(', ', strtolower($conscriboPersoon['commissies']));
-        $conscriboPersoon['coach_van'] = explode(', ', strtolower($conscriboPersoon['coach_van']));
-        $conscriboPersoon['trainer_van'] = explode(', ', strtolower($conscriboPersoon['trainer_van']));
-        $conscriboPersoon['team_2'] = explode(', ', strtolower($conscriboPersoon['team_2']));
+        $conscriboFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
 
+        // We may have personen with multiple commissies, coaches, trainers or teams. Conscribo splits these with commas.
+        foreach ($conscriboFields as $conscriboField) {
+            $conscriboPersoon[$conscriboField] = explode(', ', strtolower($conscriboPersoon[$conscriboField]));
+        }
+        
         foreach ($joomlaGroups as $joomlaGroup) {
 
             foreach ($conscriboPersoon['commissies'] as $commissie) {
@@ -239,7 +241,6 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
             }
 
             foreach ($conscriboPersoon['coach_van'] as $coach_van) {
-                // print_r(strtolower('coach ' . $coach_van));
                 if (strtolower('coach ' . $coach_van) == strtolower($joomlaGroup['title'])) {
                     $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
                 }
