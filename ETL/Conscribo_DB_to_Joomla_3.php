@@ -56,26 +56,26 @@ function syncUsers()
     // print_r($conscriboPersonen);
 
 
-    foreach ($conscriboPersonen as $key => $persoon) {
+    foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         $found = FALSE;
         foreach ($joomlaUsers as $joomlaUser) {
-            if ($persoon['email'] == $joomlaUser['email']) {
+            if ($conscriboPersoon['email'] == $joomlaUser['email']) {
                 $found = TRUE;
                 // 1. A Conscribo persoon already exists in Joomla DB, so we update it's data. 
-                // print_r($persoon['team_2']);
-                updateJoomlaUser($persoon, $joomlaUser);
+                // print_r($conscriboPersoon['team_2']);
+                updateJoomlaUser($conscriboPersoon, $joomlaUser);
             }
         }
         if ($found == FALSE) {
             // 2. A Conscribo persoon does not yet exist in Joomla DB, so we add the user. 
-            addJoomlaUser($persoon);
+            addJoomlaUser($conscriboPersoon);
         }
     }
 
     foreach ($joomlaUsers as $key => $joomlaUser) {
         $found = FALSE;
-        foreach ($conscriboPersonen as $persoon) {
-            if ($joomlaUser['email'] == $persoon['email']) {
+        foreach ($conscriboPersonen as $conscriboPersoon) {
+            if ($joomlaUser['email'] == $conscriboPersoon['email']) {
                 $found = TRUE;
             }
         }
@@ -124,17 +124,17 @@ function addJoomlaUser($user)
     print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (added)<br>");
 }
 
-function updateJoomlaUser($persoon, $joomlaUser)
+function updateJoomlaUser($conscriboPersoon, $joomlaUser)
 {
     global $conn_J3;
     $sql = "UPDATE j3_users
-        SET name = '" . $persoon['voornaam'] .  " " . $persoon['naam'] . "', username=  '" . $persoon['username'] . "', email = '" . $persoon['email'] . "' WHERE email = '" . $persoon['email'] . "' ";
+        SET name = '" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "', username=  '" . $conscriboPersoon['username'] . "', email = '" . $conscriboPersoon['email'] . "' WHERE email = '" . $conscriboPersoon['email'] . "' ";
     runQuery($conn_J3, $sql);
 
 
-    if (isset($persoon['JoomlaGroups'])) {
+    if (isset($conscriboPersoon['JoomlaGroups'])) {
         // Update groups
-        foreach ($persoon['JoomlaGroups'] as $group_id) {
+        foreach ($conscriboPersoon['JoomlaGroups'] as $group_id) {
             $sql = 'INSERT INTO J3_user_usergroup_map (user_id, group_id) VALUES (' . $joomlaUser['id'] . ', ' . $group_id . ') 
             ON DUPLICATE KEY UPDATE group_id = ' . $group_id;
             print_r('Updated usergroup: ' . $group_id . '<br>');
@@ -144,7 +144,7 @@ function updateJoomlaUser($persoon, $joomlaUser)
     }
 
 
-    print_r("Synced Conscribo persoon " .  $persoon['email'] . " successfully (updated)<br>");
+    print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (updated)<br>");
 }
 
 
@@ -161,43 +161,43 @@ function removeJoomlaUser($user)
 function sanitizeConscriboPersonen(array $conscriboPersonen): array
 {
 
-    foreach ($conscriboPersonen as $key => $persoon) {
+    foreach ($conscriboPersonen as $key => $conscriboPersoon) {
 
         // We do not sync users who do have synchroniseren turned off, in case we need accounts in Conscribo, without them being shouldn't be in the Joomla site. 
-        if (!$persoon['synchroniseren'] == 1) {
-            print_r('Not syncing Conscribo persoon because synchronisation is turned off for ' . $persoon['voornaam'] . ' ' . $persoon['naam'] . '<br>');
+        if (!$conscriboPersoon['synchroniseren'] == 1) {
+            print_r('Not syncing Conscribo persoon because synchronisation is turned off for ' . $conscriboPersoon['voornaam'] . ' ' . $conscriboPersoon['naam'] . '<br>');
             unset($conscriboPersonen[$key]);
         }
 
         // We do not sync personen without an e-mail address, because Joomla requires accounts to have an e-mail address. 
         // These persons may exist as part of Conscribo's dummy or for other reasons. They just don't get a Joomla account. 
-        if ($persoon['email'] == null || $persoon['email'] == '') {
-            print_r($persoon, true) . " is not synced because no e-mail address exists";
+        if ($conscriboPersoon['email'] == null || $conscriboPersoon['email'] == '') {
+            print_r($conscriboPersoon, true) . " is not synced because no e-mail address exists";
             unset($conscriboPersonen[$key]);
         }
 
         // We do not sync personen without a username, because Joomla requires accounts to have a username. 
         // These persons may exist as part of Conscribo's dummy or for other reasons. They just don't get a Joomla account. 
-        if ($persoon['username'] == null || $persoon['username'] == '') {
-            print_r('Not syncing Conscribo persoon ' . $persoon['voornaam'] . ' ' . $persoon['naam'] . ' because of missing username field.<br>');
+        if ($conscriboPersoon['username'] == null || $conscriboPersoon['username'] == '') {
+            print_r('Not syncing Conscribo persoon ' . $conscriboPersoon['voornaam'] . ' ' . $conscriboPersoon['naam'] . ' because of missing username field.<br>');
             unset($conscriboPersonen[$key]);
         }
 
         // We do not sync personen with an invalid e-mail address. 
-        if (!filter_var($persoon['email'], FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($conscriboPersoon['email'], FILTER_VALIDATE_EMAIL)) {
             unset($conscriboPersonen[$key]);
         }
     }
 
     // We throw an exception (and Sentry notification) in case Conscribo personen have double e-mail addresses. Conscribo may accept it, but Joomla doesn't. 
     $emailAddresses = array();
-    foreach ($conscriboPersonen as $persoon) {
-        $emailAddresses[] = $persoon['email'];
+    foreach ($conscriboPersonen as $conscriboPersoon) {
+        $emailAddresses[] = $conscriboPersoon['email'];
     }
     $duplicateEmailAddresses = array_unique(array_diff_assoc($emailAddresses, array_unique($emailAddresses)));
-    foreach ($conscriboPersonen as $key => $persoon) {
+    foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         foreach ($duplicateEmailAddresses as $duplicateEmailAddress) {
-            if ($persoon['email'] == $duplicateEmailAddress) {
+            if ($conscriboPersoon['email'] == $duplicateEmailAddress) {
                 throw new Exception("Cannot continue import! User " . $duplicateEmailAddress . " user has multiple identical e-mail addresses in Conscribo, which Joomla can't work with. Correct the mistake in Conscribo by making sure each user has just one e-mail address. ");
                 unset($conscriboPersonen[$key]);
             }
@@ -212,41 +212,41 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 {
     $joomlaGroups = getJoomlaGroups();
 
-    foreach ($conscriboPersonen as $key => $persoon) {
-        // Add the team
+    foreach ($conscriboPersonen as $key => $conscriboPersoon) {
+        
         $commissies = [];
         $coach_van = [];
         $trainer_van = [];
         $teams = [];
-
-        // Add the commissies
-        $persoon['commissies'] = explode(', ', strtolower($persoon['commissies']));
-        $persoon['coach_van'] = explode(', ', strtolower($persoon['coach_van']));
-        $persoon['trainer_van'] = explode(', ', strtolower($persoon['trainer_van']));
-        $persoon['team_2'] = explode(', ', strtolower($persoon['team_2']));
+        
+        $conscriboPersoon['commissies'] = explode(', ', strtolower($conscriboPersoon['commissies']));
+        $conscriboPersoon['coach_van'] = explode(', ', strtolower($conscriboPersoon['coach_van']));
+        $conscriboPersoon['trainer_van'] = explode(', ', strtolower($conscriboPersoon['trainer_van']));
+        $conscriboPersoon['team_2'] = explode(', ', strtolower($conscriboPersoon['team_2']));
 
         foreach ($joomlaGroups as $joomlaGroup) {
 
-            foreach ($persoon['commissies'] as $commissie) {
+            foreach ($conscriboPersoon['commissies'] as $commissie) {
                 if ($commissie == strtolower($joomlaGroup['title'])) {
                     $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
                 }
             }
 
-            foreach ($persoon['team_2'] as $team) {
+            foreach ($conscriboPersoon['team_2'] as $team) {
                 if ($team == strtolower($joomlaGroup['title'])) {
                     $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
                 }
             }
 
-            foreach ($persoon['coach_van'] as $coach_van) {
-                if ($coach_van == strtolower('coach van ' . $joomlaGroup['title'])) {
+            foreach ($conscriboPersoon['coach_van'] as $coach_van) {
+                // print_r(strtolower('coach ' . $coach_van));
+                if (strtolower('coach ' . $coach_van) == strtolower($joomlaGroup['title'])) {
                     $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
                 }
             }
 
-            foreach ($persoon['trainer_van'] as $trainer_van) {
-                if ($trainer_van == strtolower('Trainer van ' . $joomlaGroup['title'])) {
+            foreach ($conscriboPersoon['trainer_van'] as $trainer_van) {
+                if (strtolower('trainer ' . $trainer_van) == strtolower($joomlaGroup['title'])) {
                     $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
                 }
             }
