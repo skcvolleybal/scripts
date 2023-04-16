@@ -37,12 +37,24 @@ $cSessionID = authConscribo(
 // 3 Get Conscribo Personen
 $cPersonen = extractCPersonen($cSessionID, $env);
 
-// Drop Personen Tables. Recreate tables. 
+// 4 Get Conscribo Teams
+$cTeams = extractCTeams($cSessionID, $env);
+
+// 5 Get Conscribo Commissies
+$cCommissies = extractCCommissies($cSessionID, $env);
+
+// Drop Personen, Teams and Commissies Tables. Recreate tables. 
 dropTables($conn);
 createTables($conn);
 
 // 6 Update Personen DB
 loadcPersonenToSQL($cPersonen, $conn);
+
+// 7 Update Teams DB
+loadcTeamsToSQL($cTeams, $conn);
+
+// 8 Update Commissies DB
+loadcCommissiesToSQL($cCommissies, $conn);
 
 
 // ///// Done.
@@ -165,11 +177,106 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
     }
 
 
+    function extractCTeams(string $cSessionID, $env)
+    {
+
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => '{"request": {
+                "command": "listRelations",
+                "requestedFields": {
+                    "fieldName" : [
+                        "code",
+                        "leden",
+                        "poule",
+                        "niveau",
+                        "trainingstijden",
+                        "naam_nevobo",
+                        "naam",
+                        "weergavenaam",
+                        "selector",
+                        "coaches",
+                        "trainers"
+                    ]
+                },
+            "entityType": "team"
+            }
+            }
+            
+            ',
+            CURLOPT_HTTPHEADER => array(
+                'X-Conscribo-SessionId: ' . $cSessionID . '',
+                'Content-Type: application/json;charset=UTF-8'
+            ) ,
+            CURLOPT_RETURNTRANSFER => TRUE
+        ));
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        $response = json_decode($response);
+
+        if ($response->result->success != 1)
+        {
+            throw new Exception("Failed to extract teams from Conscribo: " . $response);
+        }
+
+        return $response;
+
+    }
+
+    function extractCCommissies(string $cSessionID, $env)
+    {
+
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://secure.conscribo.nl/' . $env->Conscribo_API->accountname . '/request.json',
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => '{"request": {
+                "command": "listRelations",
+                "requestedFields": {
+                    "fieldName" : [
+                        "code",
+                        "naam",
+                        "weergavenaam",
+                        "commissieleden"
+                    ]
+                },
+            "entityType": "commissie"
+            }
+            }
+            
+            ',
+            CURLOPT_HTTPHEADER => array(
+                'X-Conscribo-SessionId: ' . $cSessionID . '',
+                'Content-Type: application/json;charset=UTF-8'
+            ) ,
+            CURLOPT_RETURNTRANSFER => TRUE
+        ));
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        $response = json_decode($response);
+
+        if ($response->result->success != 1)
+        {
+            throw new Exception("Failed to extract commissies from Conscribo: " . $response);
+        }
+
+        return $response;
+
+    }
+
+
+
     function dropTables($conn) {
-        $sql = "DROP TABLE IF EXISTS `Persoon`";
+        $sql = "DROP TABLE IF EXISTS `Persoon`, `Team`, `Commissie`";
         if (mysqli_query($conn, $sql))
         {
-            echo "Table dropped succesfully  <br>";
+            echo "Tables dropped succesfully  <br>";
         }
         else
         {
@@ -216,6 +323,48 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
         {
             throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
         }
+
+        $sql = "CREATE TABLE Team (
+            code int NULL,
+            leden VARCHAR(255) NULL,
+            poule VARCHAR(255) NULL,
+            niveau VARCHAR(255) NULL,
+            trainingstijden VARCHAR(255) NULL,
+            naam_nevobo VARCHAR(255) NULL,
+            naam VARCHAR(255) NULL,
+            weergavenaam VARCHAR (255) NULL, 
+            selector VARCHAR(255) NULL,
+            coaches VARCHAR(255) NULL,
+            trainers VARCHAR(255) NULL,
+            PRIMARY KEY (code)
+          )
+          ";
+        if (mysqli_query($conn, $sql))
+        {
+            echo "Team table created succesfully  <br>";
+        }
+        else
+        {
+            throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
+        }
+
+        $sql = "CREATE TABLE Commissie (
+            code int NULL,
+            naam VARCHAR(255) NULL,
+            weergavenaam VARCHAR(255) NULL,
+            commissieleden VARCHAR(255) NULL,
+            PRIMARY KEY (code)
+          )
+          ";
+        if (mysqli_query($conn, $sql))
+        {
+            echo "Commissie table created succesfully  <br>";
+        }
+        else
+        {
+            throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
+        }
+
 
 
     }
@@ -293,6 +442,70 @@ function authConscribo(string $cUsername, string $cPassword, string $cAccountNam
     }
 
 
+    function loadcTeamsToSQL($cPersonen, $conn) {
+        // Loop through data and insert into Persoon table
+        foreach ($cPersonen->result->relations as $team)
+
+        
+        {
+            $sql = "INSERT INTO Team (
+            code, 
+            leden, 
+            poule, 
+            niveau, 
+            trainingstijden, 
+            naam_nevobo, 
+            weergavenaam, 
+            selector, 
+            coaches, 
+            trainers
+            ) 
+            VALUES (
+             '" . $team->code . "',
+             '" . $team->leden . "',
+             '" . $team->poule . "',
+             '" . $team->niveau . "',
+             '" . $team->trainingstijden . "',
+             '" . $team->naam_nevobo . "',
+             '" . $team->weergavenaam . "',
+             '" . $team->selector . "',
+             '" . $team->coaches . "',
+             '" . $team->trainers . "')";
+            if (mysqli_query($conn, $sql))
+            {
+                echo "New record $team->naam_nevobo created in Team table successfully <br>";
+            }
+            else
+            {
+                throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
+            }
+        }
+
+    }
+
+    function loadcCommissiesToSQL($cCommissies, $conn) {
+        // Loop through data and insert into Commissie table
+        foreach ($cCommissies->result->relations as $commissie)
+
+        {
+            $sql = "INSERT INTO Commissie (code, naam, weergavenaam, commissieleden) 
+                    VALUES (
+                    '" . $commissie->code . "',
+                    '" . $commissie->naam . "',
+                    '" . $commissie->weergavenaam . "',
+                    '" . $commissie->commissieleden . "')";
+
+            if (mysqli_query($conn, $sql))
+            {
+                echo "New record $commissie->naam created in Commissie table successfully <br>";
+            }
+            else
+            {
+                throw new Exception("Error: " . $sql . "<br>" . mysqli_error($conn));
+            }
+        }
+
+    }
 
     // Close connection
     mysqli_close($conn);
