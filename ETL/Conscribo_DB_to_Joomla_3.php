@@ -42,64 +42,72 @@ syncUsers();
 
 function syncUsers()
 {
-    global $conn_Conscribo;
-    global $conn_J3;
+
 
     $conscriboPersonen = getConscriboPersonen();
-    $joomlaUsers = getJoomlaUsers(); 
+    $joomlaUsers = getJoomlaUsers();
 
     // Sanitize the users first: check for missing fields, duplicates, etc.
     $conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
 
-    // Join the Joomla 3 fields on the object
+    // Join the Joomla groups on each conscriboPersonen object, for later insertion
     $conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
 
-    print_r($conscriboPersonen);
+    // print_r($conscriboPersonen);
 
 
     foreach ($conscriboPersonen as $key => $persoon) {
         $found = FALSE;
-        foreach ($joomlaUsers as $user) {
-            if ($persoon['email'] == $user['email']) {
+        foreach ($joomlaUsers as $joomlaUser) {
+            if ($persoon['email'] == $joomlaUser['email']) {
                 $found = TRUE;
                 // 1. A Conscribo persoon already exists in Joomla DB, so we update it's data. 
                 // print_r($persoon['team_2']);
-                updateJoomlaUser($persoon, $conn_J3);
+                updateJoomlaUser($persoon, $joomlaUser);
             }
         }
         if ($found == FALSE) {
             // 2. A Conscribo persoon does not yet exist in Joomla DB, so we add the user. 
-            addJoomlaUser($persoon, $conn_J3);
+            addJoomlaUser($persoon);
         }
     }
 
-    foreach ($joomlaUsers as $key => $user) {
+    foreach ($joomlaUsers as $key => $joomlaUser) {
         $found = FALSE;
         foreach ($conscriboPersonen as $persoon) {
-            if ($user['email'] == $persoon['email']) {
+            if ($joomlaUser['email'] == $persoon['email']) {
                 $found = TRUE;
             }
         }
         if ($found == FALSE) {
             // 3. A Joomla user exists which has been removed in Conscribo. So remove it from Jooml a. 
-            print_r($user['email'] . ' does not exist in Conscribo, but does exist in Joomla 3, so we remove the user from Joomla. <br>');
-            removeJoomlaUser($user, $conn_J3);
+            print_r($joomlaUser['email'] . ' does not exist in Conscribo, but does exist in Joomla 3, so we remove the user from Joomla. <br>');
+            removeJoomlaUser($joomlaUser);
         }
     }
 }
 
-function getConscriboPersonen () {
+function getConscriboPersonen(): array
+{
     global $conn_Conscribo;
     return runQuery($conn_Conscribo, 'SELECT * FROM  `persoon`');
 }
 
-function getJoomlaUsers () {
+function getJoomlaUsers(): array
+{
     global $conn_J3;
-    return runQuery($conn_J3, 'SELECT email FROM  `j3_users`');
+    return runQuery($conn_J3, 'SELECT * FROM  `J3_users`');
+}
+
+function getJoomlaUser($user): array
+{
+    global $conn_J3;
+    return runQuery($conn_J3, 'SELECT * FROM  `J3_users` WHERE `email` ="' . $user['email'] . '"');
 }
 
 
-function getJoomlaGroups () {
+function getJoomlaGroups(): array
+{
     global $conn_J3;
     return runQuery($conn_J3, "SELECT G.id, title FROM J3_usergroups G order by title asc");
 }
@@ -107,45 +115,46 @@ function getJoomlaGroups () {
 function addJoomlaUser($user)
 {
     global $conn_J3;
-
     $sql = "INSERT INTO j3_users (name, username, email, registerDate, lastvisitDate, lastResetTime)
                 VALUES ('" . $user['voornaam'] .  " " . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "' , NOW(), NOW(), NOW())";
 
-    if (mysqli_query($conn_J3, $sql)) {
-        print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (added)<br>");
-    } else {
-        throw new Exception("Could not add user to Joomla database: " . $sql . "<br>" . mysqli_error($conn_J3));
-    }
+
+
+    runQuery($conn_J3, $sql);
+    print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (added)<br>");
 }
 
-function updateJoomlaUser($user)
+function updateJoomlaUser($persoon, $joomlaUser)
 {
     global $conn_J3;
-
     $sql = "UPDATE j3_users
-        SET name = '" . $user['voornaam'] .  " " . $user['naam'] . "', username=  '" . $user['username'] . "', email = '" . $user['email'] . "'
-        WHERE email = '" . $user['email'] . "' ";
+        SET name = '" . $persoon['voornaam'] .  " " . $persoon['naam'] . "', username=  '" . $persoon['username'] . "', email = '" . $persoon['email'] . "' WHERE email = '" . $persoon['email'] . "' ";
+    runQuery($conn_J3, $sql);
 
 
-    if (mysqli_query($conn_J3, $sql)) {
-        print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (updated)<br>");
-    } else {
-        throw new Exception("Could not update user in Joomla database: " . $sql . "<br>" . mysqli_error($conn_J3));
+    if (isset($persoon['JoomlaGroups'])) {
+        // Update groups
+        foreach ($persoon['JoomlaGroups'] as $group_id) {
+            $sql = 'INSERT INTO J3_user_usergroup_map (user_id, group_id) VALUES (' . $joomlaUser['id'] . ', ' . $group_id . ') 
+            ON DUPLICATE KEY UPDATE group_id = ' . $group_id;
+            print_r('Updated usergroup: ' . $group_id . '<br>');
+
+            runQuery($conn_J3, $sql);
+        }
     }
+
+
+    print_r("Synced Conscribo persoon " .  $persoon['email'] . " successfully (updated)<br>");
 }
 
 
 function removeJoomlaUser($user)
 {
-
     global $conn_J3;
-
     $sql = "DELETE FROM j3_users WHERE email = '" . $user['email'] . "'";
 
-    if (mysqli_query($conn_J3, $sql)) {
+    if (runQuery($conn_J3, $sql)) {
         print_r("User " .  $user['email'] . " removed from Joomla users table successfully <br>");
-    } else {
-        throw new Exception("Could not remove Joomla user: " . $sql . "<br>" . mysqli_error($conn_J3));
     }
 }
 
@@ -202,11 +211,44 @@ function sanitizeConscriboPersonen(array $conscriboPersonen): array
 function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 {
     $joomlaGroups = getJoomlaGroups();
-    
+
     foreach ($conscriboPersonen as $key => $persoon) {
+        // Add the team
+        $commissies = [];
+        $coach_van = [];
+        $trainer_van = [];
+        $teams = [];
+
+        // Add the commissies
+        $persoon['commissies'] = explode(', ', strtolower($persoon['commissies']));
+        $persoon['coach_van'] = explode(', ', strtolower($persoon['coach_van']));
+        $persoon['trainer_van'] = explode(', ', strtolower($persoon['trainer_van']));
+        $persoon['team_2'] = explode(', ', strtolower($persoon['team_2']));
+
         foreach ($joomlaGroups as $joomlaGroup) {
-            if ($persoon['team_2'] == $joomlaGroup['title']) {
-                $conscriboPersonen[$key]['JoomlaGroups'] = $joomlaGroup['id'];
+
+            foreach ($persoon['commissies'] as $commissie) {
+                if ($commissie == strtolower($joomlaGroup['title'])) {
+                    $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
+                }
+            }
+
+            foreach ($persoon['team_2'] as $team) {
+                if ($team == strtolower($joomlaGroup['title'])) {
+                    $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
+                }
+            }
+
+            foreach ($persoon['coach_van'] as $coach_van) {
+                if ($coach_van == strtolower('coach van ' . $joomlaGroup['title'])) {
+                    $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
+                }
+            }
+
+            foreach ($persoon['trainer_van'] as $trainer_van) {
+                if ($trainer_van == strtolower('Trainer van ' . $joomlaGroup['title'])) {
+                    $conscriboPersonen[$key]['JoomlaGroups'][] = $joomlaGroup['id'];
+                }
             }
         }
     }
@@ -215,17 +257,24 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 
 
 
-function runQuery(mysqli $conn, string $query): array
+function runQuery(mysqli $conn, string $query): array|bool
 {
 
-    $result = $conn->query($query);
-    /* associative array */
-    $records = array();
-    while ($record = $result->fetch_array(MYSQLI_ASSOC)) {
-        // Add each record to the records array
-        $records[] = $record;
+    if ($result = mysqli_query($conn, $query)) {
+        // If we have a result, return it as array
+        if (isset($result->num_rows)) {
+            $records = array();
+            while ($record = $result->fetch_array(MYSQLI_ASSOC)) {
+                $records[] = $record;
+            }
+            return $records;
+        } else {
+            // We have no result, but the query ran successfully, return true
+            return true;
+        }
+    } else {
+        throw new Exception("Error running query: " . $query . mysqli_error($conn));
     }
-    return $records;
 }
 
 function authDB(string $host, string $user, string $password, string $dbname)
