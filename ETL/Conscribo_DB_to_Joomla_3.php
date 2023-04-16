@@ -222,6 +222,7 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
         $conscriboFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
 
         // We may have personen with multiple commissies, coaches, trainers or teams. Conscribo splits these with commas.
+        // Do we split each field on commas as well, so we have iterable arrays
         foreach ($conscriboFields as $conscriboField) {
             $conscriboPersoon[$conscriboField] = explode(', ', strtolower($conscriboPersoon[$conscriboField]));
         }
