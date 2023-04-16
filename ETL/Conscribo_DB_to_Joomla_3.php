@@ -20,9 +20,7 @@ include('Base_ETL.php');
 // How long does this run? Start time:
 $start_time = microtime(true);
 
-
 // Two database objects because source and target may be on different servers
-
 // Connect to the Conscribo MySQL Table
 $conn_Conscribo = authDB(
     $env->Conscribo_DB->host,
@@ -39,32 +37,34 @@ $conn_J3 = authDB(
     $env->Joomla3->db
 );
 
-syncUsers($conn_Conscribo, $conn_J3);
+syncUsers();
 
 
-function syncUsers($conn_Conscribo, $conn_J3)
+function syncUsers()
 {
-    $conscriboPersonen = getConscriboPersonen($conn_Conscribo);
-    $joomla3Users = getJoomla3Users($conn_J3);
+    global $conn_Conscribo;
+    global $conn_J3;
+
+    $conscriboPersonen = getConscriboPersonen();
+    $joomlaUsers = getJoomlaUsers(); 
 
     // Sanitize the users first: check for missing fields, duplicates, etc.
     $conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
 
-    $conscriboPersonen = addJoomlaTeamsToConscriboPersonen($conscriboPersonen, $conn_J3);
+    // Join the Joomla 3 fields on the object
+    $conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
 
-    // 
-    $statistics = array();
+    print_r($conscriboPersonen);
 
-    // We use nested foreaches because, somehow, array_key_exists() won't work. 
+
     foreach ($conscriboPersonen as $key => $persoon) {
         $found = FALSE;
-        foreach ($joomla3Users as $user) {
+        foreach ($joomlaUsers as $user) {
             if ($persoon['email'] == $user['email']) {
                 $found = TRUE;
                 // 1. A Conscribo persoon already exists in Joomla DB, so we update it's data. 
-                print_r($persoon['team_2']);
+                // print_r($persoon['team_2']);
                 updateJoomlaUser($persoon, $conn_J3);
-                
             }
         }
         if ($found == FALSE) {
@@ -73,7 +73,7 @@ function syncUsers($conn_Conscribo, $conn_J3)
         }
     }
 
-    foreach ($joomla3Users as $key => $user) {
+    foreach ($joomlaUsers as $key => $user) {
         $found = FALSE;
         foreach ($conscriboPersonen as $persoon) {
             if ($user['email'] == $persoon['email']) {
@@ -83,14 +83,30 @@ function syncUsers($conn_Conscribo, $conn_J3)
         if ($found == FALSE) {
             // 3. A Joomla user exists which has been removed in Conscribo. So remove it from Jooml a. 
             print_r($user['email'] . ' does not exist in Conscribo, but does exist in Joomla 3, so we remove the user from Joomla. <br>');
-
             removeJoomlaUser($user, $conn_J3);
         }
     }
 }
 
-function addJoomlaUser($user, $conn_J3)
+function getConscriboPersonen () {
+    global $conn_Conscribo;
+    return runQuery($conn_Conscribo, 'SELECT * FROM  `persoon`');
+}
+
+function getJoomlaUsers () {
+    global $conn_J3;
+    return runQuery($conn_J3, 'SELECT email FROM  `j3_users`');
+}
+
+
+function getJoomlaGroups () {
+    global $conn_J3;
+    return runQuery($conn_J3, "SELECT G.id, title FROM J3_usergroups G order by title asc");
+}
+
+function addJoomlaUser($user)
 {
+    global $conn_J3;
 
     $sql = "INSERT INTO j3_users (name, username, email, registerDate, lastvisitDate, lastResetTime)
                 VALUES ('" . $user['voornaam'] .  " " . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "' , NOW(), NOW(), NOW())";
@@ -102,8 +118,9 @@ function addJoomlaUser($user, $conn_J3)
     }
 }
 
-function updateJoomlaUser($user, $conn_J3)
+function updateJoomlaUser($user)
 {
+    global $conn_J3;
 
     $sql = "UPDATE j3_users
         SET name = '" . $user['voornaam'] .  " " . $user['naam'] . "', username=  '" . $user['username'] . "', email = '" . $user['email'] . "'
@@ -118,8 +135,11 @@ function updateJoomlaUser($user, $conn_J3)
 }
 
 
-function removeJoomlaUser($user, $conn_J3)
+function removeJoomlaUser($user)
 {
+
+    global $conn_J3;
+
     $sql = "DELETE FROM j3_users WHERE email = '" . $user['email'] . "'";
 
     if (mysqli_query($conn_J3, $sql)) {
@@ -160,7 +180,6 @@ function sanitizeConscriboPersonen(array $conscriboPersonen): array
         }
     }
 
-
     // We throw an exception (and Sentry notification) in case Conscribo personen have double e-mail addresses. Conscribo may accept it, but Joomla doesn't. 
     $emailAddresses = array();
     foreach ($conscriboPersonen as $persoon) {
@@ -176,74 +195,38 @@ function sanitizeConscriboPersonen(array $conscriboPersonen): array
         }
     }
 
-
-
     return $conscriboPersonen;
 }
 
-function addJoomlaTeamsToConscriboPersonen ($conscriboPersonen, $conn_J3) : array {
-    $joomlaTeams = getJoomlaTeams($conn_J3);
+
+function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
+{
+    $joomlaGroups = getJoomlaGroups();
+    
     foreach ($conscriboPersonen as $key => $persoon) {
-        foreach ($joomlaTeams as $team) {
-            if ($persoon['team_2'] == $team['teamnaam']) {
-                $conscriboPersonen[$key] = array_merge($persoon, $team);
+        foreach ($joomlaGroups as $joomlaGroup) {
+            if ($persoon['team_2'] == $joomlaGroup['title']) {
+                $conscriboPersonen[$key]['JoomlaGroups'] = $joomlaGroup['id'];
             }
         }
     }
-    // print_r($conscriboPersonen);
     return $conscriboPersonen;
 }
 
-function getJoomlaTeams ($conn_J3) : array {
-     // Get all teams from the j3_usergroups table
 
-     $sql = "SELECT  G.id, title AS teamnaam
-            FROM J3_usergroups G
-            WHERE G.parent_id in (SELECT id from J3_usergroups where title = 'Teams')
-            order by teamnaam asc";
-     $result = $conn_J3->query($sql);
- 
-     /* associative array */
-     $teams = array();
-     while ($team = $result->fetch_array(MYSQLI_ASSOC)) {
-         // Add each team to the teams array
-         $teams[] = $team;
-     }
-     return $teams;
-}
 
-function getConscriboPersonen($conn_Conscribo)
+function runQuery(mysqli $conn, string $query): array
 {
-    // Get all users from the Conscribo staging DB 
 
-    $sql = "SELECT * FROM  `persoon`";
-    $result = $conn_Conscribo->query($sql);
-
+    $result = $conn->query($query);
     /* associative array */
-    $personen = array();
-    while ($persoon = $result->fetch_array(MYSQLI_ASSOC)) {
-        // Add each persoon to the personen array
-        $personen[] = $persoon;
+    $records = array();
+    while ($record = $result->fetch_array(MYSQLI_ASSOC)) {
+        // Add each record to the records array
+        $records[] = $record;
     }
-    return $personen;
+    return $records;
 }
-
-function getJoomla3Users($conn_J3)
-{
-    // Get all users from the j3_users table
-
-    $sql = "SELECT email FROM  `j3_users`";
-    $result = $conn_J3->query($sql);
-
-    /* associative array */
-    $users = array();
-    while ($user = $result->fetch_array(MYSQLI_ASSOC)) {
-        // Add each user to the users array
-        $users[] = $user;
-    }
-    return $users;
-}
-
 
 function authDB(string $host, string $user, string $password, string $dbname)
 {
