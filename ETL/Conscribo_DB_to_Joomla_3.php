@@ -142,8 +142,7 @@ function updateJoomlaUser($conscriboPersoon, $joomlaUser)
             runQuery($conn_J3, $sql);
         }
     }
-
-
+    
     print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (updated)<br>");
 }
 
@@ -212,18 +211,19 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 {
 
     // First, we get all the Joomla groups (ID and title, for example ID 49, title Webcie, etc)
-    // Then, if the Conscribo persoon is member of the Webcie commissie, we add the Joomla ID (49) to the Conscribo persoon
+    // Then, for example, if the Conscribo persoon is member of the Webcie commissie, we add the Joomla Group ID (49) to the Conscribo persoon
+    // We do this for all committees, teams, etc
     // So that later, we have a Conscribo persoon with all the required Joomla group IDs to insert into the DB
 
     $joomlaGroups = getJoomlaGroups();
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         
-        $conscriboFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
+        $conscriboIterableFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
 
         // We may have personen with multiple commissies, coaches, trainers or teams. Conscribo splits these with commas.
-        // Do we split each field on commas as well, so we have iterable arrays
-        foreach ($conscriboFields as $conscriboField) {
+        // So we split each field on commas as well, so we have iterable arrays
+        foreach ($conscriboIterableFields as $conscriboField) {
             $conscriboPersoon[$conscriboField] = explode(', ', strtolower($conscriboPersoon[$conscriboField]));
         }
         
