@@ -103,7 +103,7 @@ function getJoomlaUsers(): array
     return runQuery($conn_J3, 'SELECT * FROM  `J3_users`');
 }
 
-function getJoomlaUserById($userId): array
+function getJoomlaUserById(string $userId): array
 {
     global $conn_J3;
     return runQuery($conn_J3, 'SELECT * FROM  `J3_users` WHERE `id` ="' . $userId . '"');
@@ -253,7 +253,7 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
         $conscriboIterableFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
 
         // We may have personen with multiple commissies, coaches, trainers or teams. Conscribo splits these with commas.
-        // So we split each field on commas as well, so we have iterable arrays
+        // So we split each field on commas as well, so we have arrays
         foreach ($conscriboIterableFields as $conscriboField) {
             $conscriboPersoon[$conscriboField] = explode(', ', strtolower($conscriboPersoon[$conscriboField]));
         }
@@ -291,7 +291,7 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
 
 function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
 {
-    // Key is Conscribo field, value is Joomla Community Builder field
+    // Key of this array is the Conscribo field, value is Joomla Community Builder field
     $renameFields = array(
         "lengte__cm_" => "cb_lengte",
         "rugnummer" => "cb_rugnummer",
@@ -302,7 +302,11 @@ function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         foreach ($renameFields as $conscriboField => $joomlaField) {
+            // We want to rename the Conscribo fields to fieldnames used in the Joomla DB
+            // To each Conscribo persoon, we add the new Joomla field so that the field has the correct name
             $conscriboPersonen[$key]["Communitybuilder_fields"][$joomlaField] = $conscriboPersoon[$conscriboField];
+            
+            // We remove the old fieldname to clean up 
             unset($conscriboPersonen[$key][$conscriboField]);
         }
     }
@@ -313,6 +317,7 @@ function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
 
 function runQuery(mysqli $conn, string $query): array|bool
 {
+    // Generic function to run queries. 
 
     if ($result = mysqli_query($conn, $query)) {
         // If we have a result, return it as array
@@ -333,6 +338,8 @@ function runQuery(mysqli $conn, string $query): array|bool
 
 function authDB(string $host, string $user, string $password, string $dbname)
 {
+    // Generic function for MySQL database authorization.
+
     $conn = mysqli_connect($host, $user, $password, $dbname);
     if (!$conn) {
         die("$dbname MySQL database connection failed: " . mysqli_connect_error());
