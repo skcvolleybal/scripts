@@ -53,7 +53,7 @@ function syncUsers()
     // Join the Joomla groups on each conscriboPersonen object, for later insertion
     $conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
 
-    // print_r($conscriboPersonen);
+    $conscriboPersonen = renameConscriboFieldsToJoomlaFields($conscriboPersonen);
 
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
@@ -68,7 +68,11 @@ function syncUsers()
         }
         if ($found == FALSE) {
             // 2. A Conscribo persoon does not yet exist in Joomla DB, so we add the user. 
-            addJoomlaUser($conscriboPersoon);
+            $userId = addJoomlaUser($conscriboPersoon);
+            // After adding, extra fields have to be added such as J3_comprofiler and J3_user_usergroup_map. So we retrieve the user and update it. 
+            $newJoomlaUser = getJoomlaUserById($userId);
+            updateJoomlaUser($conscriboPersoon, $newJoomlaUser);
+            
         }
     }
 
@@ -99,10 +103,10 @@ function getJoomlaUsers(): array
     return runQuery($conn_J3, 'SELECT * FROM  `J3_users`');
 }
 
-function getJoomlaUser($user): array
+function getJoomlaUserById($userId): array
 {
     global $conn_J3;
-    return runQuery($conn_J3, 'SELECT * FROM  `J3_users` WHERE `email` ="' . $user['email'] . '"');
+    return runQuery($conn_J3, 'SELECT * FROM  `J3_users` WHERE `id` ="' . $userId . '"');
 }
 
 
@@ -112,16 +116,23 @@ function getJoomlaGroups(): array
     return runQuery($conn_J3, "SELECT G.id, title FROM J3_usergroups G order by title asc");
 }
 
-function addJoomlaUser($user)
+function addJoomlaUser($conscriboPersoon): string
 {
     global $conn_J3;
     $sql = "INSERT INTO j3_users (name, username, email, registerDate, lastvisitDate, lastResetTime)
-                VALUES ('" . $user['voornaam'] .  " " . $user['naam'] . "', '" . $user['username'] . "', '" . $user['email'] . "' , NOW(), NOW(), NOW())";
+                VALUES ('" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "', '" . $conscriboPersoon['username'] . "', '" . $conscriboPersoon['email'] . "' , NOW(), NOW(), NOW())";
 
-
-
+    // Insert the user
     runQuery($conn_J3, $sql);
-    print_r("Synced Conscribo persoon " .  $user['email'] . " successfully (added)<br>");
+
+    // Return the last inserted ID
+    $sql = "SELECT LAST_INSERT_ID()";
+    $result = runQuery($conn_J3, $sql);
+    $userId = $result[0]["LAST_INSERT_ID()"];
+
+    print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (added)<br>");
+
+    return $userId;
 }
 
 function updateJoomlaUser($conscriboPersoon, $joomlaUser)
@@ -132,17 +143,37 @@ function updateJoomlaUser($conscriboPersoon, $joomlaUser)
     runQuery($conn_J3, $sql);
 
 
+    // If the Conscribo persoon has Joomla Groups to be added, insert or update them 
     if (isset($conscriboPersoon['JoomlaGroups'])) {
-        // Update groups
+        // Insert or update groups
         foreach ($conscriboPersoon['JoomlaGroups'] as $group_id) {
             $sql = 'INSERT INTO J3_user_usergroup_map (user_id, group_id) VALUES (' . $joomlaUser['id'] . ', ' . $group_id . ') 
-            ON DUPLICATE KEY UPDATE group_id = ' . $group_id;
+            ON DUPLICATE KEY UPDATE user_id = ' . $joomlaUser['id'] . ', group_id = ' . $group_id;
             print_r('Updated usergroup: ' . $group_id . '<br>');
 
             runQuery($conn_J3, $sql);
         }
     }
-    
+
+    // Update or insert 
+
+    if (isset($conscriboPersoon['Communitybuilder_fields'])) {
+        // Insert or update CB fields
+        foreach ($conscriboPersoon['Communitybuilder_fields'] as $field) {
+            // $sql = 'INSERT INTO J3_comprofiler (user_id, cb_lengte, cb_rugnummer, cb_scheidsrechterscode, cb_telephone) 
+            // VALUES (
+            // ' . $joomlaUser['id'] . ',
+            // ' . $group_id . '
+            
+            // ) 
+            // ON DUPLICATE KEY UPDATE user_id = ' . $user_id;
+            // print_r('Updated usergroup: ' . $user_id . '<br>');
+
+            // runQuery($conn_J3, $sql);
+        }
+    }
+
+
     print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (updated)<br>");
 }
 
@@ -218,7 +249,7 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
     $joomlaGroups = getJoomlaGroups();
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
-        
+
         $conscriboIterableFields = ['commissies', 'coach_van', 'trainer_van', 'team_2'];
 
         // We may have personen with multiple commissies, coaches, trainers or teams. Conscribo splits these with commas.
@@ -226,7 +257,7 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
         foreach ($conscriboIterableFields as $conscriboField) {
             $conscriboPersoon[$conscriboField] = explode(', ', strtolower($conscriboPersoon[$conscriboField]));
         }
-        
+
         foreach ($joomlaGroups as $joomlaGroup) {
 
             foreach ($conscriboPersoon['commissies'] as $commissie) {
@@ -257,6 +288,27 @@ function joinJoomlaGroupsOnConscriboPersonen(array $conscriboPersonen)
     return $conscriboPersonen;
 }
 
+
+function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
+{
+    // Key is Conscribo field, value is Joomla Community Builder field
+    $renameFields = array(
+        "lengte__cm_" => "cb_lengte",
+        "rugnummer" => "cb_rugnummer",
+        "scheidsrechterscode" => "cb_scheidsrechterscode",
+        "telefoon" => "cb_telephone"
+        // "positie" => "cb_positie"
+    );
+
+    foreach ($conscriboPersonen as $key => $conscriboPersoon) {
+        foreach ($renameFields as $conscriboField => $joomlaField) {
+            $conscriboPersonen[$key]["Communitybuilder_fields"][$joomlaField] = $conscriboPersoon[$conscriboField];
+            unset($conscriboPersonen[$key][$conscriboField]);
+        }
+    }
+
+    return $conscriboPersonen;
+}
 
 
 function runQuery(mysqli $conn, string $query): array|bool
