@@ -47,12 +47,13 @@ function syncUsers()
     $conscriboPersonen = getConscriboPersonen();
     $joomlaUsers = getJoomlaUsers();
 
-    // Sanitize the users first: check for missing fields, duplicates, etc.
+    // Sanitize the personen first: check for missing fields, duplicates, etc.
     $conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
 
-    // Join the Joomla groups on each conscriboPersonen object, for later insertion
+    // Join the Joomla groups on each conscriboPersoon, for later insertion in J3_user_usergroup_map table
     $conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
 
+    // Rename the fields of each conscriboPersoon for later insertion in J3_comprofiler DB 
     $conscriboPersonen = renameConscriboFieldsToJoomlaFields($conscriboPersonen);
 
 
@@ -120,7 +121,14 @@ function addJoomlaUser($conscriboPersoon): string
 {
     global $conn_J3;
     $sql = "INSERT INTO j3_users (name, username, email, registerDate, lastvisitDate, lastResetTime)
-                VALUES ('" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "', '" . $conscriboPersoon['username'] . "', '" . $conscriboPersoon['email'] . "' , NOW(), NOW(), NOW())";
+        VALUES (
+        '" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "',
+        '" . $conscriboPersoon['username'] . "',
+        '" . $conscriboPersoon['email'] . "' ,
+        NOW(),
+        NOW(),
+        NOW())
+                ";
 
     // Insert the user
     runQuery($conn_J3, $sql);
@@ -139,7 +147,12 @@ function updateJoomlaUser($conscriboPersoon, $joomlaUser)
 {
     global $conn_J3;
     $sql = "UPDATE j3_users
-        SET name = '" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "', username=  '" . $conscriboPersoon['username'] . "', email = '" . $conscriboPersoon['email'] . "' WHERE email = '" . $conscriboPersoon['email'] . "' ";
+        SET 
+        name = 
+        '" . $conscriboPersoon['voornaam'] .  " " . $conscriboPersoon['naam'] . "',
+        username=  '" . $conscriboPersoon['username'] . "',
+        email = '" . $conscriboPersoon['email'] . "'
+        WHERE email = '" . $conscriboPersoon['email'] . "' ";
     runQuery($conn_J3, $sql);
 
 
