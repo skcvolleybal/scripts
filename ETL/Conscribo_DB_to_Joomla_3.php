@@ -37,25 +37,24 @@ $conn_J3 = authDB(
     $env->Joomla3->db
 );
 
-syncUsers();
 
+// Get the Conscribo Personen and Joomla users
+$conscriboPersonen = getConscriboPersonen();
+$joomlaUsers = getJoomlaUsers();
 
-function syncUsers()
+// Sanitize the ConscriboPersonen first: check for missing fields, duplicates, etc.
+$conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
+
+// Join the Joomla groups on each conscriboPersoon, for later insertion in J3_user_usergroup_map table
+$conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
+
+// Rename the fields of each conscriboPersoon for later insertion in J3_comprofiler DB 
+$conscriboPersonen = renameConscriboFieldsToJoomlaFields($conscriboPersonen);
+
+syncUsers($conscriboPersonen, $joomlaUsers);
+
+function syncUsers($conscriboPersonen, $joomlaUsers)
 {
-
-
-    $conscriboPersonen = getConscriboPersonen();
-    $joomlaUsers = getJoomlaUsers();
-
-    // Sanitize the personen first: check for missing fields, duplicates, etc.
-    $conscriboPersonen = sanitizeConscriboPersonen($conscriboPersonen);
-
-    // Join the Joomla groups on each conscriboPersoon, for later insertion in J3_user_usergroup_map table
-    $conscriboPersonen = joinJoomlaGroupsOnConscriboPersonen($conscriboPersonen);
-
-    // Rename the fields of each conscriboPersoon for later insertion in J3_comprofiler DB 
-    $conscriboPersonen = renameConscriboFieldsToJoomlaFields($conscriboPersonen);
-
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
         $found = FALSE;
@@ -73,7 +72,6 @@ function syncUsers()
             // After adding, extra fields have to be added such as J3_comprofiler and J3_user_usergroup_map. So we retrieve the user and update it. 
             $newJoomlaUser = getJoomlaUserById($userId);
             updateJoomlaUser($conscriboPersoon, $newJoomlaUser);
-            
         }
     }
 
@@ -155,39 +153,66 @@ function updateJoomlaUser($conscriboPersoon, $joomlaUser)
         WHERE email = '" . $conscriboPersoon['email'] . "' ";
     runQuery($conn_J3, $sql);
 
+    insertOrUpdateJoomlaUserGroups($conscriboPersoon, $joomlaUser);
+
+    if (isset($conscriboPersoon['Communitybuilder_fields'])) {
+        insertOrUpdateJoomlaCBFields($conscriboPersoon, $joomlaUser);
+    }
+
+    print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (updated)<br>");
+}
+
+function insertOrUpdateJoomlaUserGroups($conscriboPersoon, $joomlaUser)
+{
+    global $conn_J3;
 
     // If the Conscribo persoon has Joomla Groups to be added, insert or update them 
+    // No need to delete Joomla Groups; if the Conscribo User is deleted, the Joomla user will already be deleted too. 
+    // Though it might be neater to remove the Joomla Groups too later
     if (isset($conscriboPersoon['JoomlaGroups'])) {
         // Insert or update groups
         foreach ($conscriboPersoon['JoomlaGroups'] as $group_id) {
             $sql = 'INSERT INTO J3_user_usergroup_map (user_id, group_id) VALUES (' . $joomlaUser['id'] . ', ' . $group_id . ') 
             ON DUPLICATE KEY UPDATE user_id = ' . $joomlaUser['id'] . ', group_id = ' . $group_id;
-            print_r('Updated usergroup: ' . $group_id . '<br>');
+            print_r('Updated user '  . $joomlaUser['id'] . ' with usergroup: ' . $group_id . '<br>');
 
             runQuery($conn_J3, $sql);
         }
     }
+}
 
-    // Update or insert 
+function insertOrUpdateJoomlaCBFields($conscriboPersoon, $joomlaUser)
+{
+    global $conn_J3;
 
-    if (isset($conscriboPersoon['Communitybuilder_fields'])) {
-        // Insert or update CB fields
-        foreach ($conscriboPersoon['Communitybuilder_fields'] as $field) {
-            // $sql = 'INSERT INTO J3_comprofiler (user_id, cb_lengte, cb_rugnummer, cb_scheidsrechterscode, cb_telephone) 
-            // VALUES (
-            // ' . $joomlaUser['id'] . ',
-            // ' . $group_id . '
-            
-            // ) 
-            // ON DUPLICATE KEY UPDATE user_id = ' . $user_id;
-            // print_r('Updated usergroup: ' . $user_id . '<br>');
+    // Insert or update CB fields
 
-            // runQuery($conn_J3, $sql);
-        }
-    }
+    // All fields are text fields in db, apart from lengte which is int(11)
+    $sql = 'INSERT INTO J3_comprofiler
+    (
+     user_id,
+     cb_lengte,
+     cb_rugnummer,
+     cb_scheidsrechterscode,
+     cb_telephone
+     ) VALUES 
+     (
+    ' . $joomlaUser['id'] . ',
+    "' . $conscriboPersoon['Communitybuilder_fields']['cb_lengte'] . '",
+    "' . $conscriboPersoon['Communitybuilder_fields']['cb_rugnummer'] . '",
+    "' . $conscriboPersoon['Communitybuilder_fields']['cb_scheidsrechterscode'] . '",
+    "' . $conscriboPersoon['Communitybuilder_fields']['cb_telephone'] . '"
+        ) 
+        ON DUPLICATE KEY UPDATE 
+        cb_lengte = VALUES(cb_lengte), 
+        cb_rugnummer = VALUES(cb_rugnummer), 
+        cb_scheidsrechterscode = VALUES(cb_scheidsrechterscode), 
+        cb_telephone = VALUES(cb_telephone)';
 
-
-    print_r("Synced Conscribo persoon " .  $conscriboPersoon['email'] . " successfully (updated)<br>");
+        
+        runQuery($conn_J3, $sql);
+        
+        print_r('Inserted / Updated user: ' . $joomlaUser['id'] . '<br>');
 }
 
 
@@ -311,6 +336,7 @@ function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
         "scheidsrechterscode" => "cb_scheidsrechterscode",
         "telefoon" => "cb_telephone"
         // "positie" => "cb_positie"
+        // Positie does not exist yet 
     );
 
     foreach ($conscriboPersonen as $key => $conscriboPersoon) {
@@ -318,7 +344,7 @@ function renameConscriboFieldsToJoomlaFields(array $conscriboPersonen): array
             // We want to rename the Conscribo fields to fieldnames used in the Joomla DB
             // To each Conscribo persoon, we add the new Joomla field so that the field has the correct name
             $conscriboPersonen[$key]["Communitybuilder_fields"][$joomlaField] = $conscriboPersoon[$conscriboField];
-            
+
             // We remove the old fieldname to clean up 
             unset($conscriboPersonen[$key][$conscriboField]);
         }
