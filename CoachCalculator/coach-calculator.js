@@ -7,6 +7,9 @@ $("#coachteam").dropdown({
   },
   maxSelections: 1,
   onChange: function(value, text, $selectedItem) {
+    // Ik denk dat @value ergens een andere waarde heeft gekregen in de api ofzo dus als we die waarde omzetten naar wat
+    // we verwachten dan zou t weer moeten werken.
+    value = getCorrectTeamID(value);
     coachTeamId = value;
     getSpeelSchema();
   },
@@ -22,6 +25,11 @@ $("#eigenTeams").dropdown({
     if (value) {
       eigenTeamIds = value.split(",");
     }
+
+    eigenTeamIds.forEach((currentValue, index, array) => {
+      // Update the current element in some way
+      array[index] = getCorrectTeamID(currentValue);
+    });
 
     getSpeelSchema();
   },
@@ -135,5 +143,19 @@ function getClassFromDag(dag) {
       return "table-danger";
     default:
       return "table-Secondary";
+  }
+}
+
+
+function getCorrectTeamID(value) {
+  valueArray = value.split('/');
+  switch (valueArray[4]) {
+    case "heren":
+      return valueArray[3] + "/skc-hs-" + valueArray[5];
+    case "dames":
+      return valueArray[3] + "/skc-ds-" + valueArray[5];
+    default:
+      console.log("Er ging iets mis");
+      return; 
   }
 }

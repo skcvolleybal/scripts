@@ -22,8 +22,12 @@ function GetTeamInfo($teamId)
     }
 
     $verenigingscode = substr($teamId, 0, 7);
-    $geslacht = substr($teamId, 8, 2);
-    $volgnummer = substr($teamId, 11);
+    $geslacht = substr($teamId, 12, 2);
+    $volgnummer = substr($teamId, 15);
+
+    // $verenigingscode = "ckl9r53";
+    // $geslacht = "ds";
+    // $volgnummer = "1";
 
     return (object) [
         "id" => $teamId,
