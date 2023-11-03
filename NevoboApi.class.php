@@ -323,7 +323,7 @@ $napi = new NevoboApi();
 if (isset($_GET['get'])) {
     if ($_GET['get'] == 'homeMatchesThisWeekend') {
         $matches = $napi->homeMatchesThisWeekend();
-        print_r($matches);
+        print_r (json_encode($matches));
     }
 }
 
