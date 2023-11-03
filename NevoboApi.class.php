@@ -1,13 +1,6 @@
 <?php
 require_once 'libs/SimplePie1.3/autoloader.php';
 
-// require 'vendor/autoload.php';
-
-// $env = json_decode(file_get_contents("../../env.json"));
-
-// \Sentry\init(['dsn' => 'https://45df5d88f1084fcd96c8ae9fa7db50c7@o4504883122143232.ingest.sentry.io/4504883124240384',
-'environment' => $env->Environment ]);
-
 
 // error_reporting(E_ALL);
 // ini_set("display_errors", 1);
@@ -116,6 +109,26 @@ class NevoboApi
 
         return $httpCode == 200;
     }
+
+    public function homeMatchesThisWeekend () {
+        $allMatches = $this->GetProgrammaForSporthal('LDNUN');
+        $homeMatchesThisWeekend = $this->filterMatchesThisWeek($allMatches);
+        return $homeMatchesThisWeekend;
+    }
+
+    private function filterMatchesThisWeek($matches) {
+        $today = new DateTime(); // This will create a DateTime object with today's date
+        $endOfWeek = new DateTime('next Sunday 23:59:59'); // Find the end of the upcoming Sunday
+        
+        // Filter out the matches that are within the range from today to the end of this Sunday
+        $matchesThisWeek = array_filter($matches, function ($match) use ($today, $endOfWeek) {
+            // Assuming $match['timestamp'] is a DateTime object
+            return $match['timestamp'] >= $today && $match['timestamp'] <= $endOfWeek;
+        });
+    
+        return array_values($matchesThisWeek); // Re-index the array
+    }
+    
 
     public function GetLowestTeamOf($gender)
     {
@@ -301,4 +314,20 @@ class NevoboApi
     }
 }
 
-(new NevoboApi())->Test();
+// (new NevoboApi())->Test();
+
+// (new NevoboApi())->GetProgrammaForSporthal('LDNUN');
+
+$napi = new NevoboApi();
+
+if (isset($_GET['get'])) {
+    if ($_GET['get'] == 'homeMatchesThisWeekend') {
+        $matches = $napi->homeMatchesThisWeekend();
+        print_r($matches);
+    }
+}
+
+
+
+
+
