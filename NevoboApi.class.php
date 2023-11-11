@@ -117,7 +117,9 @@ class NevoboApi
     }
 
     private function filterMatchesThisWeek($matches) {
+        // print_r($matches);
         $today = new DateTime(); // This will create a DateTime object with today's date
+        $today->modify('-2 hours'); // This subtracts two hours to the DateTime object. We do this so to make sure that matches are included that have started, but haven't finished yet. 
         $endOfWeek = new DateTime('next Sunday 23:59:59'); // Find the end of the upcoming Sunday
         
         // Filter out the matches that are within the range from today to the end of this Sunday
