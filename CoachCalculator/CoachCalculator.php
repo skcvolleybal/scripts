@@ -1,6 +1,9 @@
 <?php
 error_reporting(E_ALL ^ E_DEPRECATED);
 
+// require __DIR__ . '/vendor/autoload.php';
+
+
 
 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
     setlocale(LC_ALL, 'nld_nld');

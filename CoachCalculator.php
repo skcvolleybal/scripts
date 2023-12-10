@@ -30,7 +30,7 @@
 </STYLE>
 <?php
 
-require_once 'libs/SimplePie1.3/autoloader.php';
+require_once '../vendor/simplepie/simplepie/autoloader.php';
 $teams = ["---",
     "Dames 1",
     "Dames 2",
