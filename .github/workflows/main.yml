@@ -13,7 +13,7 @@ jobs:
       uses: actions/checkout@v2
     - name: 🏗️ Installing PHP dependencies
       run: |
-        composer update
+        composer install
         composer dumpautoload
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.3

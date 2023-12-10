@@ -1,5 +1,5 @@
 <?php
-require_once 'libs/simplepie-1.5/autoloader.php';
+require_once '../vendor/simplepie/simplepie/autoloader.php';
 
 
 class NevoboGateway
