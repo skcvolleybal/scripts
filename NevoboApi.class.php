@@ -265,11 +265,19 @@ class NevoboApi
         }
 
         $month = $this->monthTranslations[$month];
-
         $currentYear = date('Y');
-        $isMatchInfirstSixMonths = array_key_exists($month, ['januari', 'februari', 'maart', 'april', 'mei', 'juni']);
+        $isMatchInfirstSixMonths = in_array($month, [
+            'januari', 'January',
+            'februari', 'February',
+            'maart', 'March',
+            'april', 'April',
+            'mei', 'May',
+            'juni', 'June'
+        ]);
+        
 
-        // Is today in first six months?
+        
+         // Is today in first six months?
         if (date('n') < 7) {
             if ($isMatchInfirstSixMonths) {
                 $year = $currentYear;
